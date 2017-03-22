@@ -270,7 +270,11 @@ extension UIImageView {
         // Use the image from the image cache if it exists
         if
             let request = urlRequest.urlRequest,
-            let image = imageCache?.image(for: request, withIdentifier: filter?.identifier)
+            let image = imageCache?.image(
+                withIdentifier: imageDownloader.imageCacheIdentifiersProvider.identifier(
+                    for: (request: request, imageFilter: filter)
+                )
+            )
         {
             let response = DataResponse<UIImage>(request: request, response: nil, data: nil, result: .success(image))
 
