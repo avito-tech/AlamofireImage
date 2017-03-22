@@ -6,8 +6,10 @@ public protocol ImageCacheIdentifiersProvider {
     func identifier(for seed: IdentifierSeed) -> String
 }
 
-public final class ImageRequestCacheIdentifiersProvider: ImageCacheIdentifiersProvider {
+public struct ImageRequestCacheIdentifiersProvider: ImageCacheIdentifiersProvider {
     public typealias IdentifierSeed = (request: URLRequestConvertible, imageFilter: ImageFilter?)
+    
+    public init() {}
     
     public func identifier(for seed: IdentifierSeed) -> String {
         var key = seed.request.urlRequest?.url?.absoluteString ?? ""
