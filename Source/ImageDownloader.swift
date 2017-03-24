@@ -80,11 +80,10 @@ public class ImageDownloader {
             handlerID: String,
             receiptID: String,
             filter: ImageFilter?,
-            identifierProvider: ImageRequestCacheIdentifiersProvider,
             completion: CompletionHandler?)
         {
             self.request = request
-            self.urlID = identifierProvider.identifier(for: (request: request.request!, imageFilter: nil))
+            self.urlID = ImageDownloader.urlIdentifier(for: request.request!)
             self.handlerID = handlerID
             self.operations = [(receiptID: receiptID, filter: filter, completion: completion)]
         }
@@ -93,7 +92,7 @@ public class ImageDownloader {
     // MARK: - Properties
 
     /// The image cache used to store all downloaded images in.
-    public let imageCache: ImageCache?
+    public let imageCache: ImageRequestCache?
 
     /// The credential used for authenticating each download request.
     public private(set) var credential: URLCredential?
@@ -107,8 +106,6 @@ public class ImageDownloader {
     var activeRequestCount = 0
     var queuedRequests: [Request] = []
     var responseHandlers: [String: ResponseHandler] = [:]
-    
-    let imageCacheIdentifiersProvider: ImageRequestCacheIdentifiersProvider
 
     private let synchronizationQueue: DispatchQueue = {
         let name = String(format: "org.alamofire.imagedownloader.synchronizationqueue-%08x%08x", arc4random(), arc4random())
@@ -169,8 +166,7 @@ public class ImageDownloader {
         configuration: URLSessionConfiguration = ImageDownloader.defaultURLSessionConfiguration(),
         downloadPrioritization: DownloadPrioritization = .fifo,
         maximumActiveDownloads: Int = 4,
-        imageCache: ImageCache? = AutoPurgingImageCache(),
-        imageCacheIdentifiersProvider: ImageRequestCacheIdentifiersProvider = ImageRequestCacheIdentifiersProvider())
+        imageCache: ImageRequestCache? = AutoPurgingImageCache())
     {
         self.sessionManager = SessionManager(configuration: configuration)
         self.sessionManager.startRequestsImmediately = false
@@ -178,7 +174,6 @@ public class ImageDownloader {
         self.downloadPrioritization = downloadPrioritization
         self.maximumActiveDownloads = maximumActiveDownloads
         self.imageCache = imageCache
-        self.imageCacheIdentifiersProvider = imageCacheIdentifiersProvider
     }
 
     /// Initializes the `ImageDownloader` instance with the given session manager, download prioritization, maximum
@@ -194,8 +189,7 @@ public class ImageDownloader {
         sessionManager: SessionManager,
         downloadPrioritization: DownloadPrioritization = .fifo,
         maximumActiveDownloads: Int = 4,
-        imageCache: ImageCache? = AutoPurgingImageCache(),
-        imageCacheIdentifiersProvider: ImageRequestCacheIdentifiersProvider = ImageRequestCacheIdentifiersProvider())
+        imageCache: ImageRequestCache? = AutoPurgingImageCache())
     {
         self.sessionManager = sessionManager
         self.sessionManager.startRequestsImmediately = false
@@ -203,7 +197,6 @@ public class ImageDownloader {
         self.downloadPrioritization = downloadPrioritization
         self.maximumActiveDownloads = maximumActiveDownloads
         self.imageCache = imageCache
-        self.imageCacheIdentifiersProvider = imageCacheIdentifiersProvider
     }
 
     // MARK: - Authentication
@@ -272,7 +265,7 @@ public class ImageDownloader {
 
         synchronizationQueue.sync {
             // 1) Append the filter and completion handler to a pre-existing request if it already exists
-            let urlID = imageCacheIdentifiersProvider.identifier(for: (request: urlRequest, imageFilter: nil))
+            let urlID = ImageDownloader.urlIdentifier(for: urlRequest)
 
             if let responseHandler = self.responseHandlers[urlID] {
                 responseHandler.operations.append(receiptID: receiptID, filter: filter, completion: completion)
@@ -284,8 +277,7 @@ public class ImageDownloader {
             if let request = urlRequest.urlRequest {
                 switch request.cachePolicy {
                 case .useProtocolCachePolicy, .returnCacheDataElseLoad, .returnCacheDataDontLoad:
-                    let identifier = self.imageCacheIdentifiersProvider.identifier(for: (request: request, imageFilter: filter))
-                    if let image = self.imageCache?.image(withIdentifier: identifier) {
+                    if let image = self.imageCache?.image(for: request, withIdentifier: filter?.identifier) {
                         DispatchQueue.main.async {
                             let response = DataResponse<Image>(
                                 request: urlRequest.urlRequest,
@@ -357,8 +349,7 @@ public class ImageDownloader {
                                 filteredImage = image
                             }
 
-                            let identifier = strongSelf.imageCacheIdentifiersProvider.identifier(for: (request: request, imageFilter: filter))
-                            strongSelf.imageCache?.add(filteredImage, withIdentifier: identifier)
+                            strongSelf.imageCache?.add(filteredImage, for: request, withIdentifier: filter?.identifier)
 
                             DispatchQueue.main.async {
                                 let response = DataResponse<Image>(
@@ -386,7 +377,6 @@ public class ImageDownloader {
                 handlerID: handlerID,
                 receiptID: receiptID,
                 filter: filter,
-                identifierProvider: imageCacheIdentifiersProvider,
                 completion: completion
             )
 
@@ -453,7 +443,7 @@ public class ImageDownloader {
     /// - parameter requestReceipt: The request receipt to cancel.
     public func cancelRequest(with requestReceipt: RequestReceipt) {
         synchronizationQueue.sync {
-            let urlID = imageCacheIdentifiersProvider.identifier(for: (request: requestReceipt.request.request!, imageFilter: nil))
+            let urlID = ImageDownloader.urlIdentifier(for: requestReceipt.request.request!)
             guard let responseHandler = self.responseHandlers[urlID] else { return }
 
             if let index = responseHandler.operations.index(where: { $0.receiptID == requestReceipt.receiptID }) {
@@ -548,5 +538,9 @@ public class ImageDownloader {
 
     func isActiveRequestCountBelowMaximumLimit() -> Bool {
         return activeRequestCount < maximumActiveDownloads
+    }
+
+    static func urlIdentifier(for urlRequest: URLRequestConvertible) -> String {
+        return urlRequest.urlRequest?.url?.absoluteString ?? ""
     }
 }

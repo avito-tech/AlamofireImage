@@ -172,11 +172,7 @@ extension UIButton {
         // Use the image from the image cache if it exists
         if
             let request = urlRequest.urlRequest,
-            let image = imageCache?.image(
-                withIdentifier: imageDownloader.imageCacheIdentifiersProvider.identifier(
-                    for: (request: request, imageFilter: nil)
-                )
-            )
+            let image = imageCache?.image(for: request, withIdentifier: nil)
         {
             let response = DataResponse<UIImage>(
                 request: urlRequest.urlRequest,
@@ -306,11 +302,7 @@ extension UIButton {
         // Use the image from the image cache if it exists
         if
             let request = urlRequest.urlRequest,
-            let image = imageCache?.image(
-                withIdentifier: imageDownloader.imageCacheIdentifiersProvider.identifier(
-                    for: (request: request, imageFilter: nil)
-                )
-            )
+            let image = imageCache?.image(for: request, withIdentifier: nil)
         {
             let response = DataResponse<UIImage>(
                 request: urlRequest.urlRequest,
