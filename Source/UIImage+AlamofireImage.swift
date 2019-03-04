@@ -309,7 +309,7 @@ extension UIImage {
 
 private func UIGraphicsGetImageFromCurrentImageContextUnwrapped() -> UIImage {
     #if swift(>=2.3)
-        return UIGraphicsGetImageFromCurrentImageContext()!
+        return UIGraphicsGetImageFromCurrentImageContext() ?? self
     #else
         return UIGraphicsGetImageFromCurrentImageContext()
     #endif
