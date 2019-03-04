@@ -306,11 +306,12 @@ extension UIImage {
 #endif
 
 // MARK: - Private - Graphics Context Helpers
-
-private func UIGraphicsGetImageFromCurrentImageContextUnwrapped() -> UIImage {
-    #if swift(>=2.3)
-        return UIGraphicsGetImageFromCurrentImageContext() ?? self
-    #else
-        return UIGraphicsGetImageFromCurrentImageContext()
-    #endif
+extension UIImage {
+    func UIGraphicsGetImageFromCurrentImageContextUnwrapped() -> UIImage {
+        #if swift(>=2.3)
+            return UIGraphicsGetImageFromCurrentImageContext() ?? self
+        #else
+            return UIGraphicsGetImageFromCurrentImageContext()
+        #endif
+    }
 }
